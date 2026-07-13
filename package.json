@@ -1,0 +1,26 @@
+{
+  "name": "probusiness-excel-confirmacion-front",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "dev:clean": "nuxi cleanup && nuxt dev",
+    "clean": "nuxi cleanup",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^3.3.0",
+    "idb": "^8.0.3",
+    "nuxt": "^3.17.7",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.2",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  }
+}

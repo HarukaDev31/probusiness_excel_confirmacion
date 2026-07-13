@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+  --ui-color-primary-50: #fff7ed;
+  --ui-color-primary-100: #ffedd5;
+  --ui-color-primary-200: #fed7aa;
+  --ui-color-primary-300: #fdba74;
+  --ui-color-primary-400: #fb923c;
+  --ui-color-primary-500: #f97316;
+  --ui-color-primary-600: #ea580c;
+  --ui-color-primary-700: #c2410c;
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+body {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
