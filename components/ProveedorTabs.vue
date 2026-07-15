@@ -60,9 +60,18 @@ const progressColor = (percent: number) => {
 
 const progressPillClass = (percent: number) => {
   if (percent === 100) return 'bg-success-50 text-success-700'
-  if (percent >= 50) return 'bg-primary-50 text-primary-700'
   return 'bg-amber-50 text-amber-700'
 }
+
+const progressStatusLabel = (percent: number) =>
+  percent === 100 ? 'Listo' : 'Pendiente'
+
+const openProductId = computed({
+  get: () => openProductIds.value[0] ?? undefined,
+  set: (value: string | undefined | null) => {
+    openProductIds.value = value ? [String(value)] : []
+  }
+})
 
 const accordionItems = computed(() => {
   const proveedor = activeProveedor.value
@@ -73,7 +82,7 @@ const accordionItems = computed(() => {
     const progress = getItemProgress(item, labels)
     return {
       value: productKey(item),
-      label: item.nombre_comercial || item.initial_name || `Producto ${index + 1}`,
+      label: item.initial_name || `Producto ${index + 1}`,
       item,
       index,
       labels,
@@ -121,10 +130,7 @@ watch(
       const proveedor = props.proveedores[activeIndex.value]
       const last = proveedor?.items[proveedor.items.length - 1]
       if (last) {
-        const key = productKey(last)
-        if (!openProductIds.value.includes(key)) {
-          openProductIds.value = [...openProductIds.value, key]
-        }
+        openProductIds.value = [productKey(last)]
       }
     }
   }
@@ -200,8 +206,9 @@ watch(
       <div v-show="proveedorIndex === activeIndex">
         <UAccordion
           v-if="proveedor.items.length"
-          v-model="openProductIds"
-          type="multiple"
+          v-model="openProductId"
+          type="single"
+          collapsible
           :items="accordionItems"
           :unmount-on-hide="false"
           :ui="{
@@ -228,10 +235,10 @@ watch(
           <template #trailing="{ item: accItem, open }">
             <div class="flex items-center gap-1.5 shrink-0 ms-auto">
               <span
-                class="text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md"
+                class="text-[11px] font-semibold px-1.5 py-0.5 rounded-md"
                 :class="progressPillClass(accItem.progress.percent)"
               >
-                {{ accItem.progress.filled }}/{{ accItem.progress.total }}
+                {{ progressStatusLabel(accItem.progress.percent) }}
               </span>
               <UBadge color="primary" variant="soft" size="xs" class="shrink-0">
                 {{ accItem.item.tipo_producto }}

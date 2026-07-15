@@ -6,9 +6,11 @@ const props = withDefaults(defineProps<{
   collapsible?: boolean
   defaultOpen?: boolean
   badge?: string
+  badgeColor?: 'success' | 'warning' | 'error' | 'info' | 'primary' | 'neutral' | 'secondary'
 }>(), {
   collapsible: false,
-  defaultOpen: true
+  defaultOpen: true,
+  badgeColor: 'neutral'
 })
 
 const open = ref(props.defaultOpen)
@@ -25,7 +27,7 @@ const open = ref(props.defaultOpen)
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
             <h3 class="text-sm font-medium text-gray-900">{{ title }}</h3>
-            <UBadge v-if="badge" color="neutral" variant="subtle" size="xs">{{ badge }}</UBadge>
+            <UBadge v-if="badge" :color="badgeColor" variant="subtle" size="xs">{{ badge }}</UBadge>
           </div>
           <p v-if="description" class="text-xs text-gray-500 mt-0.5">{{ description }}</p>
         </div>
@@ -46,7 +48,7 @@ const open = ref(props.defaultOpen)
       <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-200/70">
         <UIcon v-if="icon" :name="icon" class="size-4 text-primary-600 shrink-0" />
         <h3 class="text-sm font-medium text-gray-900">{{ title }}</h3>
-        <UBadge v-if="badge" color="neutral" variant="subtle" size="xs">{{ badge }}</UBadge>
+        <UBadge v-if="badge" :color="badgeColor" variant="subtle" size="xs">{{ badge }}</UBadge>
       </div>
       <div class="p-3">
         <slot />

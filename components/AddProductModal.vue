@@ -20,9 +20,6 @@ const selectedLabelsCount = computed(() =>
 )
 
 watch(open, (isOpen) => {
-  if (isOpen && !selectedTipo.value && props.tipos.length) {
-    selectedTipo.value = props.tipos[0]
-  }
   if (!isOpen) selectedTipo.value = ''
 })
 
@@ -47,7 +44,7 @@ const confirm = () => {
           <USelect
             v-model="selectedTipo"
             :items="tipoOptions"
-            placeholder="Selecciona un rubro"
+            placeholder="--- Seleccionar tipo de producto ---"
             size="lg"
             class="w-full"
           />

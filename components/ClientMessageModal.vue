@@ -7,11 +7,20 @@ const props = withDefaults(
   defineProps<{
     message?: ClientMessage | null
     confirmLabel?: string
+    cancelLabel?: string
+    confirmable?: boolean
   }>(),
   {
-    confirmLabel: 'Entendido'
+    confirmLabel: 'Entendido',
+    cancelLabel: 'Cancelar',
+    confirmable: false
   }
 )
+
+const emit = defineEmits<{
+  confirm: []
+  cancel: []
+}>()
 
 const toneConfig = computed<Record<ClientMessageTone, { color: 'error' | 'warning' | 'info' | 'success'; icon: string; ring: string }>>(() => ({
   error: {
@@ -37,6 +46,16 @@ const toneConfig = computed<Record<ClientMessageTone, { color: 'error' | 'warnin
 }))
 
 const activeTone = computed(() => toneConfig.value[props.message?.tone ?? 'error'])
+
+const handleConfirm = () => {
+  emit('confirm')
+  open.value = false
+}
+
+const handleCancel = () => {
+  emit('cancel')
+  open.value = false
+}
 </script>
 
 <template>
@@ -62,14 +81,22 @@ const activeTone = computed(() => toneConfig.value[props.message?.tone ?? 'error
     </template>
 
     <template #body>
-      <p class="text-sm text-gray-600 leading-relaxed">
+      <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
         {{ message?.description || 'Ocurrió un inconveniente. Intenta nuevamente.' }}
       </p>
     </template>
 
     <template #footer>
-      <div class="flex w-full justify-end">
-        <UButton color="primary" @click="open = false">
+      <div class="flex w-full justify-end gap-2">
+        <UButton
+          v-if="confirmable"
+          color="neutral"
+          variant="ghost"
+          @click="handleCancel"
+        >
+          {{ cancelLabel }}
+        </UButton>
+        <UButton :color="confirmable ? 'primary' : activeTone.color" @click="handleConfirm">
           {{ confirmLabel }}
         </UButton>
       </div>

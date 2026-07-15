@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import type { ItemFormState } from '~/types/excelConfirmacion'
-import { calcItemTotal, formatUsd } from '~/utils/itemForm'
+import {
+  calcItemTotal,
+  formatMoneyWhileTyping,
+  formatUsd,
+  parseMoneyDraft,
+  roundMoney
+} from '~/utils/itemForm'
+import {
+  getCaracteristicaFieldConfig,
+  getRequiredCaracteristicaValues,
+  selectOptions,
+  visibleCaracteristicaLabels
+} from '~/utils/caracteristicaFields'
+import { isOptionalCaracteristica } from '~/utils/marcaModelo'
 
 const props = defineProps<{
   item: ItemFormState
@@ -13,7 +26,7 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-const FOTO_MIN_HEIGHT = 'min-h-44'
+const FOTO_MAX_HEIGHT = 'max-h-64'
 
 const localItem = computed({
   get: () => props.item,
@@ -22,10 +35,31 @@ const localItem = computed({
 
 const total = computed(() => calcItemTotal(localItem.value))
 const formattedTotal = computed(() => formatUsd(total.value))
-const cleanLabel = (label: string) => label.replace(/:$/, '').trim()
 
-const caracteristicasFilled = computed(() =>
-  props.labels.filter((l) => String(localItem.value.caracteristicas[l] || '').trim()).length
+const visibleLabels = computed(() => visibleCaracteristicaLabels(props.labels))
+
+const caracteristicasRequiredValues = computed(() =>
+  getRequiredCaracteristicaValues(
+    props.labels,
+    localItem.value.caracteristicas,
+    isOptionalCaracteristica
+  )
+)
+
+const caracteristicasCompletas = computed(() => {
+  const required = caracteristicasRequiredValues.value
+  return (
+    required.length === 0 ||
+    required.every((value) => value !== null && value !== undefined && String(value).trim() !== '')
+  )
+})
+
+const caracteristicasBadge = computed(() =>
+  caracteristicasCompletas.value ? 'Listo' : 'Pendiente'
+)
+
+const caracteristicasBadgeColor = computed(() =>
+  caracteristicasCompletas.value ? ('success' as const) : ('warning' as const)
 )
 
 const updateField = <K extends keyof ItemFormState>(key: K, value: ItemFormState[K]) => {
@@ -39,6 +73,42 @@ const updateCaracteristica = (label: string, value: string) => {
     ...localItem.value,
     caracteristicas: { ...localItem.value.caracteristicas, [label]: value }
   }
+}
+
+const precioFocused = ref(false)
+const precioDraft = ref('')
+
+const precioDisplay = computed(() => {
+  if (precioFocused.value) return precioDraft.value
+  const value = localItem.value.precio_unitario
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return ''
+  return formatUsd(Number(value))
+})
+
+const onPrecioFocus = () => {
+  if (props.readonly) return
+  precioFocused.value = true
+  const value = localItem.value.precio_unitario
+  precioDraft.value =
+    value === null || value === undefined || Number.isNaN(Number(value))
+      ? ''
+      : formatMoneyWhileTyping(value)
+}
+
+const onPrecioInput = (raw: string | number) => {
+  if (props.readonly) return
+  const formatted = formatMoneyWhileTyping(raw)
+  precioDraft.value = formatted
+  updateField('precio_unitario', parseMoneyDraft(formatted))
+}
+
+const onPrecioBlur = () => {
+  precioFocused.value = false
+  const value = localItem.value.precio_unitario
+  if (value !== null && value !== undefined && Number.isFinite(Number(value))) {
+    updateField('precio_unitario', roundMoney(Number(value)))
+  }
+  precioDraft.value = ''
 }
 
 const fotoFile = ref<File | null>(null)
@@ -65,18 +135,16 @@ const clearFoto = () => {
 <template>
   <div class="divide-y divide-gray-100">
     <section class="p-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:items-stretch">
-        <!-- Col 1: foto a altura completa -->
-        <div class="w-full h-full flex flex-col" :class="FOTO_MIN_HEIGHT">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:items-start">
+        <div class="w-full min-w-0">
           <div
             v-if="localItem.foto_url"
-            class="relative w-full h-full flex-1 flex items-center justify-center rounded-xl overflow-hidden border border-gray-200 bg-gray-50 group"
-            :class="FOTO_MIN_HEIGHT"
+            class="relative w-full flex items-center justify-center rounded-xl overflow-hidden border border-gray-200 bg-gray-50 group max-h-64"
           >
             <img
               :src="localItem.foto_url"
               alt="Producto"
-              class="max-w-full max-h-full w-auto h-auto object-contain"
+              class="max-w-full max-h-64 w-auto h-auto object-contain"
             >
             <button
               v-if="!readonly"
@@ -94,25 +162,23 @@ const clearFoto = () => {
             label="Foto"
             description="JPG, PNG"
             icon="i-heroicons-camera"
-            class="w-full h-full flex-1"
+            class="w-full"
             :ui="{
-              root: 'h-full flex-1',
-              base: `h-full flex-1 ${FOTO_MIN_HEIGHT} items-center justify-center`,
-              wrapper: 'h-full flex flex-col items-center justify-center text-center'
+              root: 'w-full',
+              base: `w-full ${FOTO_MAX_HEIGHT} min-h-44 items-center justify-center`,
+              wrapper: 'flex flex-col items-center justify-center text-center'
             }"
             @update:model-value="onFotoChange"
           />
           <div
             v-else
-            class="w-full h-full flex-1 flex items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs text-gray-400"
-            :class="FOTO_MIN_HEIGHT"
+            class="w-full min-h-44 max-h-64 flex items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs text-gray-400"
           >
             Sin foto
           </div>
         </div>
 
-        <!-- Col 2: datos en 2 columnas -->
-        <div class="min-w-0 grid grid-cols-2 gap-x-3 gap-y-3">
+        <div class="min-w-0 self-start grid grid-cols-2 gap-x-3 gap-y-3 content-start">
           <UFormField label="Nombre comercial" required class="col-span-2 w-full">
             <UInput
               class="w-full"
@@ -158,14 +224,20 @@ const clearFoto = () => {
 
           <UFormField label="Precio EXW" required class="w-full min-w-0">
             <UInput
-              v-model.number="localItem.precio_unitario"
               class="w-full"
               :disabled="readonly"
-              type="number"
-              min="0"
-              step="0.01"
+              :model-value="precioDisplay"
+              type="text"
               inputmode="decimal"
-            />
+              placeholder="0.00"
+              @focus="onPrecioFocus"
+              @blur="onPrecioBlur"
+              @update:model-value="onPrecioInput"
+            >
+              <template #leading>
+                <span class="text-gray-500">$</span>
+              </template>
+            </UInput>
           </UFormField>
 
           <UFormField label="Total USD" class="col-span-2 w-full">
@@ -180,22 +252,56 @@ const clearFoto = () => {
       </div>
     </section>
 
-    <section v-if="labels.length" class="px-4 pb-4">
+    <section v-if="visibleLabels.length" class="px-4 pb-4">
       <FormSection
         title="Características"
-        :badge="`${caracteristicasFilled}/${labels.length}`"
+        :badge="caracteristicasBadge"
+        :badge-color="caracteristicasBadgeColor"
         icon="i-heroicons-adjustments-horizontal"
         collapsible
-        :default-open="false"
+        :default-open="true"
       >
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
           <UFormField
-            v-for="label in labels"
+            v-for="label in visibleLabels"
             :key="label"
-            :label="cleanLabel(label)"
+            :label="getCaracteristicaFieldConfig(label).displayLabel"
             class="w-full min-w-0"
           >
+            <div
+              v-if="getCaracteristicaFieldConfig(label).kind === 'value_with_unit'"
+              class="flex gap-2 items-stretch"
+            >
+              <UInput
+                class="min-w-0 flex-1"
+                :disabled="readonly"
+                :model-value="item.caracteristicas[label] || ''"
+                placeholder="—"
+                size="sm"
+                @update:model-value="updateCaracteristica(label, $event)"
+              />
+              <USelect
+                class="w-[7.5rem] shrink-0"
+                :disabled="readonly"
+                :model-value="item.caracteristicas[getCaracteristicaFieldConfig(label).unitKey!] || undefined"
+                :items="selectOptions(getCaracteristicaFieldConfig(label).options || [])"
+                placeholder="Medida"
+                size="sm"
+                @update:model-value="updateCaracteristica(getCaracteristicaFieldConfig(label).unitKey!, String($event ?? ''))"
+              />
+            </div>
+            <USelect
+              v-else-if="getCaracteristicaFieldConfig(label).kind === 'select'"
+              class="w-full"
+              :disabled="readonly"
+              :model-value="item.caracteristicas[label] || undefined"
+              :items="selectOptions(getCaracteristicaFieldConfig(label).options || [])"
+              placeholder="Seleccionar"
+              size="sm"
+              @update:model-value="updateCaracteristica(label, String($event ?? ''))"
+            />
             <UInput
+              v-else
               class="w-full"
               :disabled="readonly"
               :model-value="item.caracteristicas[label] || ''"

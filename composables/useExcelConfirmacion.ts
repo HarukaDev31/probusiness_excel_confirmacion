@@ -18,6 +18,7 @@ import {
   type LabelsPorTipoProducto,
   type ProveedorFormState
 } from '~/types/excelConfirmacion'
+import { unitKeysForLabels } from '~/utils/caracteristicaFields'
 
 const normalizeLabel = (label: string) => label.trim().toLowerCase()
 
@@ -32,17 +33,62 @@ const buildCaracteristicasForTipo = (
 ): Record<string, string> => {
   const key = (tipo || 'GENERAL').toUpperCase()
   const tipoLabels = (labels[key] || labels.GENERAL || []).filter((label) => !isCampoFijo(label))
-  return Object.fromEntries(tipoLabels.map((label) => [label, '']))
+  const unitKeys = unitKeysForLabels(tipoLabels)
+  return Object.fromEntries([...tipoLabels, ...unitKeys].map((label) => [label, '']))
 }
 
-const extractItemFormState = (item: ExcelConfirmacionData['proveedores'][number]['items'][number]): ItemFormState => {
+const LEGACY_CARACTERISTICA_ALIASES: Record<string, string[]> = {
+  'Tamaño (Producto):': ['Tamaño:', 'Tamaño del producto:', 'Tamaño (Metros):'],
+  'Capacidad:': ['Capacidad (ml o kg):'],
+  'Peso Neto (Producto):': ['Peso Neto:', 'Peso'],
+  'Unidad de medida:': ['Pares o Piezas:']
+}
+
+const resolveCaracteristicaFromRaw = (
+  raw: Record<string, string>,
+  label: string
+): string => {
+  const direct = String(raw[label] ?? '').trim()
+  if (direct) return direct
+
+  for (const alias of LEGACY_CARACTERISTICA_ALIASES[label] || []) {
+    const value = String(raw[alias] ?? '').trim()
+    if (value) return value
+  }
+
+  return String(raw[label] ?? '')
+}
+
+const extractItemFormState = (
+  item: ExcelConfirmacionData['proveedores'][number]['items'][number],
+  labels: LabelsPorTipoProducto
+): ItemFormState => {
   const caracteristicas = { ...(item.caracteristicas || {}) }
+  const tipoKey = (item.tipo_producto || 'GENERAL').toUpperCase()
+  const tipoLabels = (labels[tipoKey] || labels.GENERAL || []).filter((label) => !isCampoFijo(label))
+  const unitKeys = unitKeysForLabels(tipoLabels)
+
   const dynamicCaracteristicas: Record<string, string> = {}
 
+  for (const label of tipoLabels) {
+    dynamicCaracteristicas[label] = resolveCaracteristicaFromRaw(caracteristicas, label)
+  }
+
+  for (const unitKey of unitKeys) {
+    dynamicCaracteristicas[unitKey] = String(caracteristicas[unitKey] ?? '')
+  }
+
+  // Conservar extras (p.ej. unidades) por si el tipo aún no lista todas
   for (const [key, value] of Object.entries(caracteristicas)) {
-    if (!isCampoFijo(key)) {
-      dynamicCaracteristicas[key] = value
-    }
+    if (isCampoFijo(key) || key in dynamicCaracteristicas) continue
+    dynamicCaracteristicas[key] = value
+  }
+
+  if (
+    String(caracteristicas['Tamaño (Metros):'] ?? '').trim() !== '' &&
+    !String(dynamicCaracteristicas['Unidad Tamaño:'] ?? '').trim()
+  ) {
+    dynamicCaracteristicas['Unidad Tamaño:'] = 'metros'
   }
 
   return {
@@ -50,9 +96,9 @@ const extractItemFormState = (item: ExcelConfirmacionData['proveedores'][number]
     initial_name: item.initial_name || '',
     tipo_producto: item.tipo_producto || 'GENERAL',
     caracteristicas: dynamicCaracteristicas,
-    qty: item.qty ?? item.initial_qty ?? null,
-    precio_unitario: item.precio_unitario ?? item.initial_price ?? null,
-    nombre_comercial: caracteristicas[CAMPO_NOMBRE_COMERCIAL] || item.initial_name || '',
+    qty: item.qty ?? null,
+    precio_unitario: item.precio_unitario ?? null,
+    nombre_comercial: caracteristicas[CAMPO_NOMBRE_COMERCIAL] || '',
     foto_url: caracteristicas[CAMPO_FOTO] || '',
     hs_code: caracteristicas[CAMPO_HS_CODE] || '',
     link_producto: caracteristicas[CAMPO_LINK] || '',
@@ -102,9 +148,11 @@ export function useExcelConfirmacion() {
   )
 
   const tiposDisponibles = computed(() =>
-    Object.keys(labels.value)
-      .filter((key) => key !== 'GENERAL' || Object.keys(labels.value).length === 1)
-      .sort((a, b) => a.localeCompare(b, 'es'))
+    Object.keys(labels.value).sort((a, b) => {
+      if (a === 'GENERAL') return -1
+      if (b === 'GENERAL') return 1
+      return a.localeCompare(b, 'es')
+    })
   )
 
   const buildFormState = (payload: ExcelConfirmacionData) => {
@@ -112,7 +160,7 @@ export function useExcelConfirmacion() {
       id: proveedor.id,
       code_supplier: proveedor.code_supplier,
       excel_conf_form_cerrado: Boolean(proveedor.excel_conf_form_cerrado),
-      items: proveedor.items.map(extractItemFormState)
+      items: proveedor.items.map((item) => extractItemFormState(item, labels.value))
     }))
   }
 
