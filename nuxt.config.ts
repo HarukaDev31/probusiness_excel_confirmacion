@@ -10,6 +10,12 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'ProBusiness — Confirmación de productos',
+      meta: [
+        {
+          name: 'viewport',
+          content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+        }
+      ],
       link: [
         {
           rel: 'icon',

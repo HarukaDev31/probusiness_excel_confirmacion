@@ -13,8 +13,12 @@
   --ui-primary: var(--ui-color-primary-600);
 }
 
+html,
 body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  /* Evita zoom por doble tap en móvil (iOS/Android) */
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
 }
 
 .safe-bottom {

@@ -23,7 +23,6 @@ const tabs = computed(() =>
   props.proveedores.map((p, index) => ({
     label: p.code_supplier || `Proveedor ${index + 1}`,
     value: index,
-    badge: String(p.items.length),
     status: getProveedorCompletionStatus(p)
   }))
 )
