@@ -1,4 +1,5 @@
 import type { ItemFormState, ProveedorFormState } from '~/types/excelConfirmacion'
+import { isProveedorFormLocked } from '~/utils/proveedorLock'
 
 export const SM_DEFAULT = 'S/M'
 
@@ -30,7 +31,7 @@ export function findMissingMarcaModelo(
   const result: MissingMarcaModeloItem[] = []
 
   for (const proveedor of proveedores) {
-    if (proveedor.excel_conf_form_cerrado) continue
+    if (isProveedorFormLocked(proveedor)) continue
 
     for (const item of proveedor.items) {
       const labels = labelsForTipo(item.tipo_producto)
@@ -80,7 +81,7 @@ export function applySmDefaultsToFormState(
   labelsForTipo: (tipo: string) => string[]
 ): ProveedorFormState[] {
   return proveedores.map((proveedor) => {
-    if (proveedor.excel_conf_form_cerrado) return proveedor
+    if (isProveedorFormLocked(proveedor)) return proveedor
 
     return {
       ...proveedor,

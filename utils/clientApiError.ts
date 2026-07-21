@@ -47,8 +47,8 @@ const FALLBACK_MESSAGES: Record<string, ClientMessage> = {
     tone: 'error'
   },
   FORMULARIO_CERRADO: {
-    title: 'Formulario cerrado',
-    description: 'Coordinación cerró este proveedor. Ya no puedes editar ni guardar cambios hasta que lo reabran.',
+    title: 'Proveedor revisado',
+    description: 'Este proveedor ya está en Revisado. Ya no puedes editar ni guardar cambios en ese proveedor.',
     tone: 'warning'
   },
   ENLACE_INVALIDO: {
@@ -67,8 +67,8 @@ const FALLBACK_MESSAGES: Record<string, ClientMessage> = {
     tone: 'warning'
   },
   FORMULARIO_CERRADO_LOCAL: {
-    title: 'Formulario cerrado',
-    description: 'Este proveedor está cerrado. No puedes guardar cambios en este momento.',
+    title: 'Proveedor revisado',
+    description: 'Este proveedor ya está en Revisado. No puedes guardar cambios en este momento.',
     tone: 'warning'
   }
 }

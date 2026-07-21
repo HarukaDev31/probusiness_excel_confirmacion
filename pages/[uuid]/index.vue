@@ -5,6 +5,7 @@ import {
   findMissingMarcaModelo,
   formatMissingMarcaModeloMessage
 } from '~/utils/marcaModelo'
+import { isProveedorFormLocked } from '~/utils/proveedorLock'
 
 const route = useRoute()
 const uuid = computed(() => String(route.params.uuid || ''))
@@ -84,7 +85,7 @@ const performSave = async () => {
 }
 
 const handleSave = async () => {
-  const abiertos = formState.value.filter((proveedor) => !proveedor.excel_conf_form_cerrado)
+  const abiertos = formState.value.filter((proveedor) => !isProveedorFormLocked(proveedor))
   const missing = findMissingMarcaModelo(abiertos, labelsForTipo)
 
   if (missing.length) {
@@ -107,12 +108,15 @@ const confirmSmAndSave = async () => {
 }
 
 const handleAddProduct = (tipo: string) => {
+  if (activeProveedorCerrado.value) return
   const newId = addProduct(activeTabIndex.value, tipo)
+  if (!newId) return
   openProductIds.value = [String(newId)]
   toast.add({ title: 'Producto agregado', description: tipo, color: 'success' })
 }
 
 const handleRemoveProduct = (itemId: number) => {
+  if (activeProveedorCerrado.value) return
   removeProduct(activeTabIndex.value, itemId)
   openProductIds.value = openProductIds.value.filter((id) => id !== String(itemId))
 }
@@ -179,7 +183,7 @@ watch(() => route.query.proveedor, () => resolveInitialTab())
       v-if="data && formState.length"
       :saving="saving"
       :product-count="activeProductCount"
-      :save-disabled="activeProveedorCerrado || allProveedoresCerrados"
+      :save-disabled="allProveedoresCerrados"
       :add-disabled="activeProveedorCerrado"
       @save="handleSave"
       @add="showAddModal = true"

@@ -2,6 +2,7 @@
 import type { ItemFormState, ProveedorFormState } from '~/types/excelConfirmacion'
 import { getProveedorCompletionStatus, type ProveedorCompletionStatus } from '~/utils/formValidation'
 import { getItemProgress } from '~/utils/itemForm'
+import { isProveedorFormLocked } from '~/utils/proveedorLock'
 
 const props = defineProps<{
   proveedores: ProveedorFormState[]
@@ -34,7 +35,7 @@ const proveedorStatusDotClass = (status: ProveedorCompletionStatus) => {
 }
 
 const activeProveedor = computed(() => props.proveedores[activeIndex.value])
-const activeProveedorCerrado = computed(() => Boolean(activeProveedor.value?.excel_conf_form_cerrado))
+const activeProveedorCerrado = computed(() => isProveedorFormLocked(activeProveedor.value))
 
 const proveedorProgress = computed(() => {
   const proveedor = activeProveedor.value
@@ -155,7 +156,7 @@ watch(
               :class="proveedorStatusDotClass(item.status)"
             />
             <UIcon
-              v-if="proveedores[item.value]?.excel_conf_form_cerrado"
+              v-if="isProveedorFormLocked(proveedores[item.value])"
               name="i-heroicons-lock-closed"
               class="size-3.5 text-amber-600 shrink-0"
             />
@@ -170,8 +171,8 @@ watch(
       icon="i-heroicons-lock-closed"
       color="warning"
       variant="soft"
-      title="Formulario cerrado"
-      description="Coordinación cerró este proveedor. Ya no puedes editar ni guardar cambios."
+      title="Proveedor revisado"
+      description="Este proveedor ya está en Revisado. Ya no puedes editar ni guardar cambios."
       class="mb-3"
     />
 
@@ -254,7 +255,7 @@ watch(
             <ItemConfirmacionForm
               :item="accItem.item"
               :labels="accItem.labels"
-              :readonly="Boolean(proveedor.excel_conf_form_cerrado)"
+              :readonly="isProveedorFormLocked(proveedor)"
               @update:item="updateItem(proveedorIndex, index, $event)"
               @remove="emit('remove-product', accItem.item.id)"
             />
@@ -267,7 +268,14 @@ watch(
         >
           <UIcon name="i-heroicons-cube-transparent" class="size-10 text-gray-300 mx-auto mb-3" />
           <p class="text-gray-600 font-medium mb-1">Sin productos</p>
-          <UButton color="primary" variant="soft" icon="i-heroicons-plus" class="mt-3" @click="emit('add-product')">
+          <UButton
+            v-if="!isProveedorFormLocked(proveedor)"
+            color="primary"
+            variant="soft"
+            icon="i-heroicons-plus"
+            class="mt-3"
+            @click="emit('add-product')"
+          >
             Agregar producto
           </UButton>
         </div>

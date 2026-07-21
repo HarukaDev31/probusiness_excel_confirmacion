@@ -82,6 +82,7 @@ export interface ItemFormState {
 export interface ProveedorFormState {
   id: number
   code_supplier: string
+  excel_conf_status?: string | null
   excel_conf_form_cerrado?: boolean
   items: ItemFormState[]
 }

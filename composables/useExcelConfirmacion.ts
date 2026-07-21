@@ -19,6 +19,7 @@ import {
   type ProveedorFormState
 } from '~/types/excelConfirmacion'
 import { unitKeysForLabels } from '~/utils/caracteristicaFields'
+import { isProveedorFormLocked } from '~/utils/proveedorLock'
 
 const normalizeLabel = (label: string) => label.trim().toLowerCase()
 
@@ -159,16 +160,17 @@ export function useExcelConfirmacion() {
     formState.value = payload.proveedores.map((proveedor) => ({
       id: proveedor.id,
       code_supplier: proveedor.code_supplier,
-      excel_conf_form_cerrado: Boolean(proveedor.excel_conf_form_cerrado),
+      excel_conf_status: proveedor.excel_conf_status || null,
+      excel_conf_form_cerrado: isProveedorFormLocked(proveedor),
       items: proveedor.items.map((item) => extractItemFormState(item, labels.value))
     }))
   }
 
   const isProveedorCerrado = (proveedorIndex: number) =>
-    Boolean(formState.value[proveedorIndex]?.excel_conf_form_cerrado)
+    isProveedorFormLocked(formState.value[proveedorIndex])
 
   const proveedoresAbiertos = computed(() =>
-    formState.value.filter((proveedor) => !proveedor.excel_conf_form_cerrado)
+    formState.value.filter((proveedor) => !isProveedorFormLocked(proveedor))
   )
 
   const allProveedoresCerrados = computed(() =>
@@ -218,13 +220,23 @@ export function useExcelConfirmacion() {
 
       const draft = !options?.skipDraft ? await loadFormDraft(uuid) : null
       if (draft) {
-        const cerradoPorProveedor = new Map(
-          dataRes.data.proveedores.map((p) => [p.id, Boolean(p.excel_conf_form_cerrado)])
+        const lockedPorProveedor = new Map(
+          dataRes.data.proveedores.map((p) => [
+            p.id,
+            {
+              excel_conf_status: p.excel_conf_status || null,
+              excel_conf_form_cerrado: isProveedorFormLocked(p)
+            }
+          ])
         )
-        formState.value = draft.formState.map((proveedor) => ({
-          ...proveedor,
-          excel_conf_form_cerrado: cerradoPorProveedor.get(proveedor.id) ?? false
-        }))
+        formState.value = draft.formState.map((proveedor) => {
+          const locked = lockedPorProveedor.get(proveedor.id)
+          return {
+            ...proveedor,
+            excel_conf_status: locked?.excel_conf_status ?? proveedor.excel_conf_status ?? null,
+            excel_conf_form_cerrado: locked?.excel_conf_form_cerrado ?? isProveedorFormLocked(proveedor)
+          }
+        })
         tempIdCounter = draft.tempIdCounter
         hasDraft.value = true
       } else {
@@ -263,6 +275,7 @@ export function useExcelConfirmacion() {
   })
 
   const addProduct = (proveedorIndex: number, tipo: string): number => {
+    if (isProveedorCerrado(proveedorIndex)) return 0
     const item = createEmptyItem(tipo)
     formState.value = formState.value.map((proveedor, index) =>
       index === proveedorIndex
@@ -273,6 +286,7 @@ export function useExcelConfirmacion() {
   }
 
   const removeProduct = (proveedorIndex: number, itemId: number) => {
+    if (isProveedorCerrado(proveedorIndex)) return
     formState.value = formState.value.map((proveedor, index) =>
       index === proveedorIndex
         ? { ...proveedor, items: proveedor.items.filter((item) => item.id !== itemId) }
@@ -282,7 +296,7 @@ export function useExcelConfirmacion() {
 
   const buildSavePayload = () => ({
     proveedores: formState.value
-      .filter((proveedor) => !proveedor.excel_conf_form_cerrado)
+      .filter((proveedor) => !isProveedorFormLocked(proveedor))
       .map((proveedor) => ({
         id: proveedor.id,
         items: proveedor.items.map(mergeItemForSave)
@@ -295,7 +309,7 @@ export function useExcelConfirmacion() {
     successMessage.value = null
 
     const validationErrors = validateFormState(
-      formState.value.filter((proveedor) => !proveedor.excel_conf_form_cerrado)
+      formState.value.filter((proveedor) => !isProveedorFormLocked(proveedor))
     )
     if (validationErrors.length) {
       clientMessage.value = clientMessageFromCode(
