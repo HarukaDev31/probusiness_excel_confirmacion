@@ -73,7 +73,10 @@ export interface ItemFormState {
   qty: number | null
   precio_unitario: number | null
   nombre_comercial: string
+  /** URL pública (API) o blob: local para preview */
   foto_url: string
+  /** Archivo pendiente de subir (multipart). No se serializa en draft. */
+  foto_file?: File | null
   hs_code: string
   link_producto: string
   isNew?: boolean

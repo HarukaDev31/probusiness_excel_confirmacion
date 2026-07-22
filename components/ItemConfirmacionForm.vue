@@ -111,24 +111,33 @@ const onPrecioBlur = () => {
   precioDraft.value = ''
 }
 
-const fotoFile = ref<File | null>(null)
+const fotoFile = computed(() => localItem.value.foto_file ?? null)
+
+const revokeIfBlob = (url: string) => {
+  if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+}
 
 const onFotoChange = (files: File | File[] | null | undefined) => {
+  if (props.readonly) return
   const file = Array.isArray(files) ? files[0] : files
+  const prevUrl = String(localItem.value.foto_url || '')
   if (!file) {
-    fotoFile.value = null
-    updateField('foto_url', '')
+    revokeIfBlob(prevUrl)
+    localItem.value = { ...localItem.value, foto_file: null, foto_url: '' }
     return
   }
-  fotoFile.value = file
-  const reader = new FileReader()
-  reader.onload = () => updateField('foto_url', String(reader.result || ''))
-  reader.readAsDataURL(file)
+  revokeIfBlob(prevUrl)
+  localItem.value = {
+    ...localItem.value,
+    foto_file: file,
+    foto_url: URL.createObjectURL(file)
+  }
 }
 
 const clearFoto = () => {
-  fotoFile.value = null
-  updateField('foto_url', '')
+  if (props.readonly) return
+  revokeIfBlob(String(localItem.value.foto_url || ''))
+  localItem.value = { ...localItem.value, foto_file: null, foto_url: '' }
 }
 </script>
 

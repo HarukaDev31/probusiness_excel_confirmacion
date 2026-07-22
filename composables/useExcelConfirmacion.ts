@@ -101,10 +101,19 @@ const extractItemFormState = (
     precio_unitario: item.precio_unitario ?? null,
     nombre_comercial: caracteristicas[CAMPO_NOMBRE_COMERCIAL] || '',
     foto_url: caracteristicas[CAMPO_FOTO] || '',
+    foto_file: null,
     hs_code: caracteristicas[CAMPO_HS_CODE] || '',
     link_producto: caracteristicas[CAMPO_LINK] || '',
     isNew: Boolean(item.is_new),
   }
+}
+
+/** Valor de FOTO/IMAGEN para el JSON (nunca base64/blob; URL pública = preview, el back conserva la ruta). */
+const fotoUrlForSave = (item: ItemFormState): string => {
+  if (item.foto_file) return ''
+  const url = String(item.foto_url || '').trim()
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) return ''
+  return url
 }
 
 const mergeItemForSave = (item: ItemFormState) => ({
@@ -114,13 +123,51 @@ const mergeItemForSave = (item: ItemFormState) => ({
   caracteristicas: {
     ...item.caracteristicas,
     [CAMPO_NOMBRE_COMERCIAL]: item.nombre_comercial,
-    [CAMPO_FOTO]: item.foto_url,
+    [CAMPO_FOTO]: fotoUrlForSave(item),
     [CAMPO_HS_CODE]: item.hs_code,
     [CAMPO_LINK]: item.link_producto
   },
   qty: item.qty,
   precio_unitario: item.precio_unitario
 })
+
+const buildSaveFormData = (proveedores: ProveedorFormState[]): FormData => {
+  const abiertos = proveedores.filter((proveedor) => !isProveedorFormLocked(proveedor))
+  const formData = new FormData()
+  formData.append(
+    'proveedores',
+    JSON.stringify(
+      abiertos.map((proveedor) => ({
+        id: proveedor.id,
+        items: proveedor.items.map(mergeItemForSave)
+      }))
+    )
+  )
+
+  for (const proveedor of abiertos) {
+    for (const item of proveedor.items) {
+      if (item.foto_file) {
+        formData.append(`fotos[${proveedor.id}][${item.id}]`, item.foto_file)
+      }
+    }
+  }
+
+  return formData
+}
+
+/** Draft sin File/blob (IndexedDB no debe guardar archivos pendientes). */
+const draftSafeFormState = (state: ProveedorFormState[]): ProveedorFormState[] =>
+  state.map((proveedor) => ({
+    ...proveedor,
+    items: proveedor.items.map((item) => {
+      const url = String(item.foto_url || '')
+      return {
+        ...item,
+        foto_file: null,
+        foto_url: url.startsWith('blob:') || url.startsWith('data:') ? '' : url
+      }
+    })
+  }))
 
 export function useExcelConfirmacion() {
   const loading = ref(false)
@@ -135,7 +182,7 @@ export function useExcelConfirmacion() {
   const hasDraft = ref(false)
 
   const persistDraft = useDebounceFn(async (uuid: string, state: ProveedorFormState[]) => {
-    await saveFormDraft(uuid, state, tempIdCounter)
+    await saveFormDraft(uuid, draftSafeFormState(state), tempIdCounter)
     hasDraft.value = true
   }, 600)
 
@@ -269,6 +316,7 @@ export function useExcelConfirmacion() {
     precio_unitario: null,
     nombre_comercial: '',
     foto_url: '',
+    foto_file: null,
     hs_code: '',
     link_producto: '',
     isNew: true
@@ -294,14 +342,7 @@ export function useExcelConfirmacion() {
     )
   }
 
-  const buildSavePayload = () => ({
-    proveedores: formState.value
-      .filter((proveedor) => !isProveedorFormLocked(proveedor))
-      .map((proveedor) => ({
-        id: proveedor.id,
-        items: proveedor.items.map(mergeItemForSave)
-      }))
-  })
+  const buildSavePayload = () => buildSaveFormData(formState.value)
 
   const save = async (uuid: string) => {
     saving.value = true
@@ -320,14 +361,17 @@ export function useExcelConfirmacion() {
       return false
     }
 
-    if (!buildSavePayload().proveedores.length) {
+    const formData = buildSavePayload()
+    const proveedoresJson = formData.get('proveedores')
+    const parsed = typeof proveedoresJson === 'string' ? JSON.parse(proveedoresJson) : null
+    if (!Array.isArray(parsed) || !parsed.length) {
       clientMessage.value = clientMessageFromCode('FORMULARIO_CERRADO_LOCAL')
       saving.value = false
       return false
     }
 
     try {
-      const response = await ExcelConfirmacionService.save(uuid, buildSavePayload())
+      const response = await ExcelConfirmacionService.save(uuid, formData)
       successMessage.value = response.message || 'Tu confirmación se guardó correctamente.'
       await clearFormDraft(uuid)
       hasDraft.value = false

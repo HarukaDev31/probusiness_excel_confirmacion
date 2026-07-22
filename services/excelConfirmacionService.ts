@@ -1,7 +1,6 @@
 import type {
   ApiResponse,
   ExcelConfirmacionData,
-  ExcelConfirmacionSavePayload,
   LabelsPorTipoProducto
 } from '~/types/excelConfirmacion'
 import { ClientApiError, parseClientApiError } from '~/utils/clientApiError'
@@ -15,11 +14,14 @@ export class ExcelConfirmacionService {
   }
 
   private static async request<T>(endpoint: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
+    const body = options.body
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+
     try {
       return await $fetch<T>(`${this.getBaseUrl()}/${endpoint.replace(/^\//, '')}`, {
         ...options,
         headers: {
-          'Content-Type': 'application/json',
+          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
           ...(options.headers || {})
         }
       })
@@ -50,10 +52,11 @@ export class ExcelConfirmacionService {
     return this.ensureSuccess(response)
   }
 
-  static async save(uuid: string, payload: ExcelConfirmacionSavePayload): Promise<ApiResponse<null>> {
+  /** POST multipart: proveedores (JSON string) + fotos[proveedorId][itemId] */
+  static async save(uuid: string, formData: FormData): Promise<ApiResponse<null>> {
     const response = await this.request<ApiResponse<null>>(`${BASE}/${uuid}`, {
-      method: 'PUT',
-      body: payload
+      method: 'POST',
+      body: formData
     })
     return this.ensureSuccess(response)
   }
