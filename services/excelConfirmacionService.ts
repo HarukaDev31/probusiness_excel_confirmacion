@@ -52,7 +52,6 @@ export class ExcelConfirmacionService {
     return this.ensureSuccess(response)
   }
 
-  /** POST multipart: proveedores (JSON string) + fotos[proveedorId][itemId] */
   static async save(uuid: string, formData: FormData): Promise<ApiResponse<null>> {
     const response = await this.request<ApiResponse<null>>(`${BASE}/${uuid}`, {
       method: 'POST',

@@ -79,7 +79,6 @@ const extractItemFormState = (
     dynamicCaracteristicas[unitKey] = String(caracteristicas[unitKey] ?? '')
   }
 
-  // Conservar extras (p.ej. unidades) por si el tipo aún no lista todas
   for (const [key, value] of Object.entries(caracteristicas)) {
     if (isCampoFijo(key) || key in dynamicCaracteristicas) continue
     dynamicCaracteristicas[key] = value
@@ -108,7 +107,6 @@ const extractItemFormState = (
   }
 }
 
-/** Valor de FOTO/IMAGEN para el JSON (nunca base64/blob; URL pública = preview, el back conserva la ruta). */
 const fotoUrlForSave = (item: ItemFormState): string => {
   if (item.foto_file) return ''
   const url = String(item.foto_url || '').trim()
@@ -155,7 +153,6 @@ const buildSaveFormData = (proveedores: ProveedorFormState[]): FormData => {
   return formData
 }
 
-/** Draft sin File/blob (IndexedDB no debe guardar archivos pendientes). */
 const draftSafeFormState = (state: ProveedorFormState[]): ProveedorFormState[] =>
   state.map((proveedor) => ({
     ...proveedor,
