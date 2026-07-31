@@ -347,7 +347,8 @@ export function useExcelConfirmacion() {
     successMessage.value = null
 
     const validationErrors = validateFormState(
-      formState.value.filter((proveedor) => !isProveedorFormLocked(proveedor))
+      formState.value.filter((proveedor) => !isProveedorFormLocked(proveedor)),
+      labelsForTipo
     )
     if (validationErrors.length) {
       clientMessage.value = clientMessageFromCode(

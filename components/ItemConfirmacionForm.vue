@@ -275,6 +275,7 @@ const clearFoto = () => {
             v-for="label in visibleLabels"
             :key="label"
             :label="getCaracteristicaFieldConfig(label).displayLabel"
+            :required="!isOptionalCaracteristica(label)"
             class="w-full min-w-0"
           >
             <div

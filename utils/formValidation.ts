@@ -1,4 +1,9 @@
 import type { ItemFormState, ProveedorFormState } from '~/types/excelConfirmacion'
+import {
+  getCaracteristicaFieldConfig,
+  visibleCaracteristicaLabels
+} from '~/utils/caracteristicaFields'
+import { isOptionalCaracteristica } from '~/utils/marcaModelo'
 
 type RequiredFieldConfig = {
   label: string
@@ -32,38 +37,78 @@ export type ItemRequiredFieldKey = keyof typeof ITEM_REQUIRED_FIELDS
 export interface FormValidationError {
   proveedorCode: string
   itemName: string
-  field: ItemRequiredFieldKey
+  field: ItemRequiredFieldKey | string
   label: string
 }
 
 export type ProveedorCompletionStatus = 'empty' | 'partial' | 'complete'
 
-export function getItemRequiredErrors(item: ItemFormState): FormValidationError[] {
-  return (Object.entries(ITEM_REQUIRED_FIELDS) as [ItemRequiredFieldKey, RequiredFieldConfig][])
+export function getItemRequiredErrors(
+  item: ItemFormState,
+  labels: string[] = []
+): FormValidationError[] {
+  const itemName = item.nombre_comercial || item.initial_name || 'Producto'
+  const errors: FormValidationError[] = (
+    Object.entries(ITEM_REQUIRED_FIELDS) as [ItemRequiredFieldKey, RequiredFieldConfig][]
+  )
     .filter(([, config]) => !config.isValid(item))
     .map(([field, config]) => ({
       proveedorCode: '',
-      itemName: item.nombre_comercial || item.initial_name || 'Producto',
+      itemName,
       field,
       label: config.label
     }))
+
+  for (const label of visibleCaracteristicaLabels(labels)) {
+    if (isOptionalCaracteristica(label)) continue
+
+    const displayLabel = getCaracteristicaFieldConfig(label).displayLabel
+    if (String(item.caracteristicas[label] ?? '').trim() === '') {
+      errors.push({
+        proveedorCode: '',
+        itemName,
+        field: label,
+        label: displayLabel
+      })
+    }
+
+    const unitKey = getCaracteristicaFieldConfig(label).unitKey
+    if (unitKey && String(item.caracteristicas[unitKey] ?? '').trim() === '') {
+      errors.push({
+        proveedorCode: '',
+        itemName,
+        field: unitKey,
+        label: `Unidad de medida (${displayLabel})`
+      })
+    }
+  }
+
+  return errors
 }
 
-export function isItemComplete(item: ItemFormState): boolean {
-  return getItemRequiredErrors(item).length === 0
+export function isItemComplete(item: ItemFormState, labels: string[] = []): boolean {
+  return getItemRequiredErrors(item, labels).length === 0
 }
 
-export function getProveedorCompletionStatus(proveedor: ProveedorFormState): ProveedorCompletionStatus {
+export function getProveedorCompletionStatus(
+  proveedor: ProveedorFormState,
+  labelsForTipo: (tipo: string) => string[] = () => []
+): ProveedorCompletionStatus {
   if (!proveedor.items.length) return 'empty'
-  return proveedor.items.every(isItemComplete) ? 'complete' : 'partial'
+  return proveedor.items.every((item) => isItemComplete(item, labelsForTipo(item.tipo_producto)))
+    ? 'complete'
+    : 'partial'
 }
 
-export function validateFormState(proveedores: ProveedorFormState[]): FormValidationError[] {
+export function validateFormState(
+  proveedores: ProveedorFormState[],
+  labelsForTipo: (tipo: string) => string[] = () => []
+): FormValidationError[] {
   const errors: FormValidationError[] = []
 
   for (const proveedor of proveedores) {
     for (const item of proveedor.items) {
-      for (const error of getItemRequiredErrors(item)) {
+      for (const error of getItemRequiredErrors(item, labelsForTipo(item.tipo_producto))) {
         errors.push({
           ...error,
           proveedorCode: proveedor.code_supplier || 'Proveedor'

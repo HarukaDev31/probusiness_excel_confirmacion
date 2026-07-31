@@ -91,7 +91,7 @@ export function visibleCaracteristicaLabels(labels: string[]): string[] {
 }
 
 /**
- * Valores requeridos de características: labels visibles (sin marca/modelo)
+ * Valores requeridos de características: labels visibles (excepto opcionales)
  * más las unidades asociadas.
  */
 export function getRequiredCaracteristicaValues(

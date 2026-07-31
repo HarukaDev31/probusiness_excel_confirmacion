@@ -24,7 +24,7 @@ const tabs = computed(() =>
   props.proveedores.map((p, index) => ({
     label: p.code_supplier || `Proveedor ${index + 1}`,
     value: index,
-    status: getProveedorCompletionStatus(p)
+    status: getProveedorCompletionStatus(p, props.labelsForTipo)
   }))
 )
 

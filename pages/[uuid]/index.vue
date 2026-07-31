@@ -1,11 +1,4 @@
 <script setup lang="ts">
-import type { ClientMessage } from '~/utils/clientApiError'
-import {
-  applySmDefaultsToFormState,
-  findMissingMarcaModelo,
-  formatMissingMarcaModeloMessage
-} from '~/utils/marcaModelo'
-import { isProveedorFormLocked } from '~/utils/proveedorLock'
 
 const route = useRoute()
 const uuid = computed(() => String(route.params.uuid || ''))
@@ -35,8 +28,6 @@ const activeTabIndex = ref(0)
 const openProductIds = ref<string[]>([])
 const showAddModal = ref(false)
 const showClientMessageModal = ref(false)
-const showSmConfirmModal = ref(false)
-const smConfirmMessage = ref<ClientMessage | null>(null)
 
 const activeProductCount = computed(() =>
   formState.value[activeTabIndex.value]?.items.length ?? 0
@@ -61,10 +52,6 @@ watch(showClientMessageModal, (open) => {
   if (!open) setClientMessage(null)
 })
 
-watch(showSmConfirmModal, (open) => {
-  if (!open) smConfirmMessage.value = null
-})
-
 const navigateAfterSave = async () => {
   const proveedor = formState.value[activeTabIndex.value]?.code_supplier
   await navigateTo({
@@ -78,33 +65,10 @@ const navigateAfterSave = async () => {
   })
 }
 
-const performSave = async () => {
+const handleSave = async () => {
   const ok = await save(uuid.value)
   if (!ok) return
   await navigateAfterSave()
-}
-
-const handleSave = async () => {
-  const abiertos = formState.value.filter((proveedor) => !isProveedorFormLocked(proveedor))
-  const missing = findMissingMarcaModelo(abiertos, labelsForTipo)
-
-  if (missing.length) {
-    smConfirmMessage.value = {
-      title: 'Marca / Modelo incompletos',
-      description: formatMissingMarcaModeloMessage(missing),
-      code: 'MARCA_MODELO_SM',
-      tone: 'warning'
-    }
-    showSmConfirmModal.value = true
-    return
-  }
-
-  await performSave()
-}
-
-const confirmSmAndSave = async () => {
-  formState.value = applySmDefaultsToFormState(formState.value, labelsForTipo)
-  await performSave()
 }
 
 const handleAddProduct = (tipo: string) => {
@@ -199,15 +163,6 @@ watch(() => route.query.proveedor, () => resolveInitialTab())
     <ClientMessageModal
       v-model:open="showClientMessageModal"
       :message="clientMessage"
-    />
-
-    <ClientMessageModal
-      v-model:open="showSmConfirmModal"
-      :message="smConfirmMessage"
-      confirmable
-      confirm-label="Continuar y guardar"
-      cancel-label="Revisar"
-      @confirm="confirmSmAndSave"
     />
   </div>
 </template>
