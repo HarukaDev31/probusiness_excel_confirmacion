@@ -1,7 +1,4 @@
-/** URLs remotas http(s) necesitan el mismo modo CORS en <img> y en fetch. */
-export const isRemoteHttpUrl = (url: string): boolean => /^https?:\/\//i.test(String(url || '').trim())
-
-/** Evita reutilizar una entrada de caché "opaca" (cargada sin CORS). */
+/** Evita reutilizar una entrada de caché "opaca" de una carga <img> sin CORS. */
 export const withCacheBust = (url: string): string => {
   const busted = new URL(url)
   busted.searchParams.set('_cb', String(Date.now()))
@@ -9,8 +6,9 @@ export const withCacheBust = (url: string): string => {
 }
 
 /**
- * Descarga la imagen en modo CORS explícito.
- * Usa cache-bust + no-store para no mezclar con una carga <img> previa sin crossorigin.
+ * Descarga bytes de la imagen para copiar al portapapeles.
+ * Nota: URLs remotas (cdn.probusiness.pe) requieren Access-Control-Allow-Origin en el CDN.
+ * Las fotos locales (blob/File) no tienen ese problema.
  */
 export const fetchImageBlobCors = async (url: string): Promise<Blob> => {
   const normalized = String(url || '').trim()
