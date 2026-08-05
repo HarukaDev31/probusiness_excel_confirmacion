@@ -21,6 +21,7 @@
           width="800"
           height="600"
           class="max-w-full max-h-[80vh] min-h-[50vh] object-contain select-none"
+          :crossorigin="isRemoteHttpUrl(imageUrl) ? 'anonymous' : undefined"
           draggable="false"
           :style="{
             transform: `scale(${imageScale}) translate(${imagePosition.x}px, ${imagePosition.y}px)`,
@@ -72,6 +73,8 @@
 </template>
 
 <script setup lang="ts">
+import { isRemoteHttpUrl } from '~/utils/fotoCors'
+
 const props = withDefaults(
   defineProps<{
     isOpen: boolean
