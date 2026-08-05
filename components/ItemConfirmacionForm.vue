@@ -13,6 +13,7 @@ import {
   selectOptions,
   visibleCaracteristicaLabels
 } from '~/utils/caracteristicaFields'
+import { fetchImageBlobCors, isRemoteHttpUrl } from '~/utils/fotoCors'
 import { isOptionalCaracteristica } from '~/utils/marcaModelo'
 
 const props = defineProps<{
@@ -173,17 +174,15 @@ const copyFoto = async () => {
 
   copyingFoto.value = true
   try {
-    const source = localItem.value.foto_file ?? (await fetch(url).then((res) => {
-      if (!res.ok) throw new Error('No se pudo obtener la imagen')
-      return res.blob()
-    }))
+    const source = localItem.value.foto_file ?? (await fetchImageBlobCors(url))
     const png = await blobToPng(source)
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
     toast.add({ title: 'Imagen copiada', color: 'success' })
-  } catch {
+  } catch (error) {
+    console.error('[copyFoto]', error)
     toast.add({
       title: 'No se pudo copiar la imagen',
-      description: 'Prueba ampliarla y copiarla manualmente',
+      description: 'Si persiste, limpia datos del sitio (caché) y reintenta',
       color: 'error'
     })
   } finally {
@@ -205,6 +204,7 @@ const copyFoto = async () => {
               :src="localItem.foto_url"
               alt="Producto"
               class="max-w-full max-h-64 w-auto h-auto object-contain"
+              :crossorigin="isRemoteHttpUrl(localItem.foto_url) ? 'anonymous' : undefined"
             >
             <div
               class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
