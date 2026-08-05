@@ -180,20 +180,11 @@ const copyFoto = async () => {
     toast.add({ title: 'Imagen copiada', color: 'success' })
   } catch (error) {
     console.error('[copyFoto]', error)
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.add({
-        title: 'Enlace copiado',
-        description: 'El CDN no permite copiar la imagen (falta CORS). Se copió la URL.',
-        color: 'warning'
-      })
-    } catch {
-      toast.add({
-        title: 'No se pudo copiar la imagen',
-        description: 'El CDN no envía Access-Control-Allow-Origin',
-        color: 'error'
-      })
-    }
+    toast.add({
+      title: 'No se pudo copiar la imagen',
+      description: 'Intenta de nuevo o limpia la caché del sitio',
+      color: 'error'
+    })
   } finally {
     copyingFoto.value = false
   }
