@@ -111,7 +111,10 @@ const onPrecioBlur = () => {
   precioDraft.value = ''
 }
 
+const toast = useToast()
 const fotoFile = computed(() => localItem.value.foto_file ?? null)
+const previewOpen = ref(false)
+const copyingFoto = ref(false)
 
 const revokeIfBlob = (url: string) => {
   if (url.startsWith('blob:')) URL.revokeObjectURL(url)
@@ -136,8 +139,56 @@ const onFotoChange = (files: File | File[] | null | undefined) => {
 
 const clearFoto = () => {
   if (props.readonly) return
+  previewOpen.value = false
   revokeIfBlob(String(localItem.value.foto_url || ''))
   localItem.value = { ...localItem.value, foto_file: null, foto_url: '' }
+}
+
+const openFotoPreview = () => {
+  if (!localItem.value.foto_url) return
+  previewOpen.value = true
+}
+
+const blobToPng = async (blob: Blob): Promise<Blob> => {
+  if (blob.type === 'image/png') return blob
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('No se pudo crear el canvas')
+  ctx.drawImage(bitmap, 0, 0)
+  bitmap.close()
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (result) => (result ? resolve(result) : reject(new Error('No se pudo convertir a PNG'))),
+      'image/png'
+    )
+  })
+}
+
+const copyFoto = async () => {
+  const url = String(localItem.value.foto_url || '')
+  if (!url || copyingFoto.value) return
+
+  copyingFoto.value = true
+  try {
+    const source = localItem.value.foto_file ?? (await fetch(url).then((res) => {
+      if (!res.ok) throw new Error('No se pudo obtener la imagen')
+      return res.blob()
+    }))
+    const png = await blobToPng(source)
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+    toast.add({ title: 'Imagen copiada', color: 'success' })
+  } catch {
+    toast.add({
+      title: 'No se pudo copiar la imagen',
+      description: 'Prueba ampliarla y copiarla manualmente',
+      color: 'error'
+    })
+  } finally {
+    copyingFoto.value = false
+  }
 }
 </script>
 
@@ -155,14 +206,39 @@ const clearFoto = () => {
               alt="Producto"
               class="max-w-full max-h-64 w-auto h-auto object-contain"
             >
-            <button
-              v-if="!readonly"
-              type="button"
-              class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-              @click="clearFoto"
+            <div
+              class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
             >
-              <UIcon name="i-heroicons-trash" class="size-5 text-white" />
-            </button>
+              <button
+                type="button"
+                class="flex size-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+                title="Ampliar"
+                aria-label="Ampliar imagen"
+                @click="openFotoPreview"
+              >
+                <UIcon name="i-heroicons-magnifying-glass-plus" class="size-5" />
+              </button>
+              <button
+                type="button"
+                class="flex size-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors disabled:opacity-50"
+                title="Copiar imagen"
+                aria-label="Copiar imagen"
+                :disabled="copyingFoto"
+                @click="copyFoto"
+              >
+                <UIcon name="i-heroicons-clipboard-document" class="size-5" />
+              </button>
+              <button
+                v-if="!readonly"
+                type="button"
+                class="flex size-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+                title="Quitar foto"
+                aria-label="Quitar foto"
+                @click="clearFoto"
+              >
+                <UIcon name="i-heroicons-trash" class="size-5" />
+              </button>
+            </div>
           </div>
           <UFileUpload
             v-else-if="!readonly"
@@ -185,6 +261,12 @@ const clearFoto = () => {
           >
             Sin foto
           </div>
+          <ImageModal
+            :is-open="previewOpen"
+            :image-url="localItem.foto_url"
+            alt-text="Producto"
+            @close="previewOpen = false"
+          />
         </div>
 
         <div class="min-w-0 self-start grid grid-cols-2 gap-x-3 gap-y-3 content-start">
