@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { sanitizeUuid } from '~/utils/sanitizeUuid'
+
 const route = useRoute()
 const colorMode = useColorMode()
 
-const uuid = computed(() => String(route.params.uuid || ''))
+const uuid = computed(() => sanitizeUuid(route.params.uuid))
 const carga = computed(() => String(route.query.carga || ''))
 const nombreCliente = computed(() => String(route.query.cliente || ''))
 const proveedor = computed(() => String(route.query.proveedor || '').trim())

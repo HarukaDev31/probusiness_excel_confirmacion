@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { sanitizeUuid } from '~/utils/sanitizeUuid'
 
 const route = useRoute()
-const uuid = computed(() => String(route.params.uuid || ''))
+const uuid = computed(() => sanitizeUuid(route.params.uuid))
 const toast = useToast()
 const colorMode = useColorMode()
 
@@ -87,6 +88,14 @@ const handleRemoveProduct = (itemId: number) => {
 
 onMounted(async () => {
   colorMode.preference = 'light'
+  const raw = String(route.params.uuid || '')
+  if (uuid.value && raw !== uuid.value) {
+    await navigateTo(
+      { path: `/${uuid.value}`, query: { ...route.query } },
+      { replace: true }
+    )
+    return
+  }
   if (!uuid.value) {
     setClientMessage({
       title: 'Enlace inválido',
