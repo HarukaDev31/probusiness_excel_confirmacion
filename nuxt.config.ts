@@ -32,7 +32,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8085'
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8085',
+      orgKey: process.env.NUXT_PUBLIC_ORG_KEY || ''
     }
   }
 })

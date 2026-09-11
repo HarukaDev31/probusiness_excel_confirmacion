@@ -4,6 +4,7 @@ import type {
   LabelsPorTipoProducto
 } from '~/types/excelConfirmacion'
 import { ClientApiError, parseClientApiError } from '~/utils/clientApiError'
+import { getOrgKeyHeader } from '~/utils/orgKey'
 import { sanitizeUuid } from '~/utils/sanitizeUuid'
 
 const BASE = 'api/contenedor/external/excel-confirmacion'
@@ -36,6 +37,7 @@ export class ExcelConfirmacionService {
         ...options,
         headers: {
           ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+          ...getOrgKeyHeader(),
           ...(options.headers || {})
         }
       })
